@@ -1,0 +1,149 @@
+<?php
+/**
+ * @file
+ * Dfp responsive ads module.
+ */
+
+/**
+ * Implements hook_theme_registry_alter().
+ */
+function dfp_responsive_ads_theme_registry_alter(&$theme_registry) {
+  $path = drupal_get_path('module', 'dfp_responsive_ads');
+  $theme_registry['dfp_tag']['template'] = $path . '/theme/dfp_tag';
+  $theme_registry['dfp_tag']['theme path'] = $path;
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function dfp_responsive_ads_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'ctools_export_ui_edit_item_form' && isset($form['tag_settings']) && arg(2) == 'dfp_ads') {
+    $tag = ($form_state['op'] == 'add' ? $form_state['item'] : $form_state['item']->raw);
+    // Layout settings.
+    $form['layout_settings'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Layout Settings'),
+      '#collapsible' => TRUE,
+      '#collapsed' => FALSE,
+      '#group' => 'settings',
+    );
+    $form['layout_settings']['layout_types'] = array(
+      '#type' => 'select',
+      '#title' => t('Layout Type'),
+      '#empty_option' => t('- None -'),
+      '#empty_value' => '',
+      '#default_value' => $tag->settings['layout_types'],
+      '#options' => array(
+        'mobile' => t('Mobile Layout'),
+        'tablet' => t('Tablet layout'),
+      ),
+      '#parents' => array('settings', 'layout_types'),
+      '#description' => t('Choose layout types to show ads.'),
+    );
+  }
+  elseif ($form_id == 'dfp_admin_settings') {
+    // Global layout settings.
+    $form['global_layout_settings'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Global Layout Settings'),
+      '#collapsible' => TRUE,
+      '#collapsed' => FALSE,
+      '#group' => 'settings',
+    );
+    $form['global_layout_settings']['dfp_mobile_layout'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Mobile'),
+      '#default_value' => variable_get('dfp_mobile_layout', '768'),
+      '#required' => FALSE,
+      '#description' => t('Set max width +1px for mobile layout'),
+    );
+    $form['global_layout_settings']['dfp_tablet_layout'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Tablet'),
+      '#default_value' => variable_get('dfp_tablet_layout', '1024'),
+      '#required' => FALSE,
+      '#description' => t('Set max width +1px for tablet layout'),
+    );
+  }
+}
+
+/**
+ * Implements hook_js_alter().
+ */
+function dfp_responsive_ads_js_alter(&$js) {
+// Show add only on specific layout.
+  $sizes = dfp_responsive_ads_cache_layout_helper();
+  if (!empty($sizes)) {
+    $tags = dfp_tag_load_all();
+    foreach ($tags as $tag) {
+      foreach($js as $key => $item) {
+        if($item['scope'] == 'header' && is_string($item['data']) && strpos($item['data'], 'googletag.slots.' . $tag->machinename )=== 0 ) {
+          if (isset($tag->settings['layout_types'])) {
+            $layout_type = $tag->settings['layout_types'];
+          }
+          else {
+            $layout_type = '';
+          }
+          $value = dfp_responsive_ads_get_js_helper($layout_type);
+          $js[$key]['data'] = 'if (jQuery( window ).width() ' . $value . ') {' . "\n" . $js[$key]['data'] . "\n" . '}';
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Helper function to implement drupal_static caching.
+ *
+ * @return array
+ *   layout sizes array
+ */
+function dfp_responsive_ads_cache_layout_helper() {
+  // Implements drupal_static to reduce variable_get calls.
+  $layouts = array('mobile', 'tablet');
+  $sizes = &drupal_static(__FUNCTION__);
+  if (!isset($sizes)) {
+    foreach ($layouts as $layout) {
+      $sizes[$layout] = variable_get('dfp_' . $layout . '_layout');
+    }
+  }
+  return $sizes;
+}
+
+/**
+ * Implements template_preprocess_dfp_tag().
+ */
+function dfp_responsive_ads_preprocess_dfp_tag(&$variables) {
+  // Add $layout_value variable into dfp_tag template.
+  if (isset($variables['tag']->layout_types)) {
+    $layout_type = $variables['tag']->layout_types;
+  }
+  else {
+    $layout_type = '';
+  }
+
+  $variables['layout_value'] = dfp_responsive_ads_get_js_helper($layout_type);
+}
+
+/**
+ * Helper function to return js for appropriate layout.
+ *
+ * @param string $layout_type
+ *   layout type
+ *
+ * @return string
+ *   string to be added into js
+ */
+function dfp_responsive_ads_get_js_helper($layout_type) {
+  $sizes = dfp_responsive_ads_cache_layout_helper();
+  $value = '>= ' . $sizes['tablet'];
+  if (!empty($layout_type)) {
+    if ($layout_type == 'mobile') {
+      $value = '< ' . $sizes['mobile'];
+    }
+    elseif ($layout_type == 'tablet') {
+      $value = '< ' . $sizes['tablet'];
+    }
+  }
+  return $value;
+}
