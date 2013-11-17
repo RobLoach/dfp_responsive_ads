@@ -1,0 +1,13 @@
+<?php
+/**
+ * @file
+ * Dfp responsive ads install file.
+ */
+
+/**
+ * Implements hook_uninstall().
+ */
+function dfp_responsive_ads_uninstall() {
+  variable_del('dfp_responsive_ads_mobile_layout');
+  variable_del('dfp__responsive_ads_tablet_layout');
+}
