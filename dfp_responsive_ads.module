@@ -76,8 +76,8 @@ function dfp_responsive_ads_js_alter(&$js) {
   if (!empty($sizes)) {
     $tags = dfp_tag_load_all();
     foreach ($tags as $tag) {
-      foreach($js as $key => $item) {
-        if($item['scope'] == 'header' && is_string($item['data']) && strpos($item['data'], 'googletag.slots.' . $tag->machinename )=== 0 ) {
+      foreach ($js as $key => $item) {
+        if ($item['scope'] == 'header' && is_string($item['data']) && strpos($item['data'], 'googletag.slots.' . $tag->machinename) === 0) {
           if (isset($tag->settings['layout_types'])) {
             $layout_type = $tag->settings['layout_types'];
           }

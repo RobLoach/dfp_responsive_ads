@@ -1,8 +1,9 @@
 <?php
-  /**
-   * @file
-   * Dfp responsive template for dfp tags.
-   */
+
+/**
+ * @file
+ * Dfp responsive template for dfp tags.
+ */
 ?>
 
 <div <?php print drupal_attributes($placeholder_attributes) ?>>
